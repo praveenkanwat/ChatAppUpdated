@@ -35,6 +35,9 @@ public class ChatArrayAdapter extends ArrayAdapter<ChatMessage>{
         return this.MessageList.size();
 
     }
+    public void clearList(){
+        MessageList.clear();
+    }
     public  ChatMessage getItem(int index){
         return this.MessageList.get(index);
     }

@@ -24,10 +24,7 @@ public class CodeVerify extends ActionBarActivity{
             @Override
             public void onClick(View v) {
 
-                    i=new Intent(CodeVerify.this,MainChatWindow.class);
-                    etcode.setText("");
-                    startActivity(i);
-                    etcode.setText("");
+
 
             }
         });

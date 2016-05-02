@@ -1,8 +1,13 @@
 package com.alpha.chatapp;
 
+import android.app.ProgressDialog;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.database.DataSetObserver;
+import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.v7.app.ActionBarActivity;
 import android.text.TextUtils;
 import android.view.KeyEvent;
@@ -13,44 +18,56 @@ import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.Toast;
 
-import java.text.DateFormat;
-import java.util.Date;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.util.HashMap;
 
 /**
  * Created by praveen on 11-04-2016.
  */
 public class MainChatWindow  extends ActionBarActivity {
 
-    MessageDB messageDB;
+
     private EditText messageInput;
     private Button sendButton;
     private ChatArrayAdapter adp;
     private ListView list;
+    String HisUsrId,MineUsrId;
+    String chatmsg;
+    String jsonchange;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.chat_window);
-        Intent in = getIntent();
-
         messageInput = (EditText) findViewById(R.id.message_input);
+        jsonchange="";
         list = (ListView) findViewById(R.id.listview1);
-
-
+        Intent intent = getIntent();
+        HisUsrId = intent.getStringExtra(Config.USR_ID);
+        SharedPreferences sharedPref = getSharedPreferences(getString(R.string.com_alpha_chatapp_settings), Context.MODE_PRIVATE);
+        int uid = sharedPref.getInt(getString(R.string.uid), 0);
+        MineUsrId=String.valueOf(uid);
         sendButton = (Button) findViewById(R.id.send_button);
         adp = new ChatArrayAdapter(getApplicationContext(), R.layout.chat_people);
-        messageDB = new MessageDB(this,null,null,1);
-        messageDB.databaseToString();
 
-        for (int i = 0; i< messageDB.message.size(); i++){
-            ChatMessage chatDBMessage=new ChatMessage();
-            chatDBMessage.setMessage(messageDB.message.get(i));
-            chatDBMessage.setDate(messageDB.date.get(i));
-            chatDBMessage.setMe(messageDB.isme.get(i) == 1);
-            adp.add(chatDBMessage);
-        }
+
 
         reciveChatMessage();
+
+        final Handler h = new Handler();
+        final int delay = 10000; //milliseconds
+
+        h.postDelayed(new Runnable(){
+            public void run(){
+                //do something
+                getMessages();
+                h.postDelayed(this, delay);
+            }
+        }, delay);
 
         messageInput.setOnKeyListener(new View.OnKeyListener() {
             @Override
@@ -89,35 +106,113 @@ public class MainChatWindow  extends ActionBarActivity {
         });
     }
 
+
     private void reciveChatMessage() {
-        ChatMessage chatMessage=new ChatMessage();
-        chatMessage.setId(122);
-        chatMessage.setMessage("hi bro");
-        chatMessage.setDate(java.text.DateFormat.getDateTimeInstance().format(new Date()));
-        chatMessage.setMe(false);
-        adp.add(chatMessage);
-
-        ChatMessage chatMessage2=new ChatMessage();
-        chatMessage2.setId(122);
-        chatMessage2.setMessage("what are you doing?");
-        chatMessage2.setDate(java.text.DateFormat.getDateTimeInstance().format(new Date()));
-        chatMessage2.setMe(false);
-        adp.add(chatMessage2);
-
+        getMessages();
     }
 
     private boolean sendChatMessage() {
-        ChatMessage chatMessage=new ChatMessage();
-        chatMessage.setId(122);
-        chatMessage.setMessage(messageInput.getText().toString());
-        chatMessage.setDate(DateFormat.getDateTimeInstance().format(new Date()));
-         chatMessage.setMe(true);
-        adp.add(chatMessage);
-        messageDB.addNewMessage(chatMessage);
+        chatmsg = messageInput.getText().toString();
+        addMessage();
+        getMessages();
         messageInput.setText("");
-
         return true;
     }
+    private void getMessages(){
+
+        class GetMessages extends AsyncTask<Void,Void,String> {
+            @Override
+            protected void onPreExecute() {
+                super.onPreExecute();
+            }
+
+            @Override
+            protected void onPostExecute(String s) {
+                super.onPostExecute(s);
+                if(s.equals(jsonchange)){
+
+                }
+                else {
+                    adp.clearList();
+                    showMessages(s);
+                }
+                jsonchange=s;
+
+
+            }
+
+            @Override
+            protected String doInBackground(Void... params) {
+                RequestHandler rh = new RequestHandler();
+                String s = rh.sendGetRequestParamMessages(Config.URL_RECV_MSG,MineUsrId,HisUsrId);
+                return s;
+            }
+        }
+        GetMessages ge = new GetMessages();
+        ge.execute();
+    }
+    private void showMessages(String json){
+
+        try {
+            JSONObject jsonObject = new JSONObject(json);
+            JSONArray result = jsonObject.getJSONArray(Config.TAG_JSON_MSG_ARRAY);
+
+            for (int i = 0; i < result.length(); i++) {
+                JSONObject jo = result.getJSONObject(i);
+                String id = jo.getString(Config.TAG_MSG_ID);
+                String sender = jo.getString(Config.TAG_MSG_SEND_ID);
+                String recive= jo.getString(Config.TAG_RECV_MSG_ID);
+                String message= jo.getString(Config.TAG_MSG);
+                String samay= jo.getString(Config.TAG_TIME);
+                String isme=jo.getString("isMine");
+
+
+                ChatMessage chatMessage=new ChatMessage();
+                chatMessage.setId(id);
+                chatMessage.setMessage(message);
+                chatMessage.setDate(samay);
+                chatMessage.setMe(isme.equals("1"));
+                adp.add(chatMessage);
+
+            }
+
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+    private void addMessage(){
+
+
+        class AddMessage extends AsyncTask<Void,Void,String> {
+
+
+            @Override
+            protected void onPreExecute() {
+                super.onPreExecute();
+            }
+
+            @Override
+            protected void onPostExecute(String s) {
+                super.onPostExecute(s);
+            }
+
+            @Override
+            protected String doInBackground(Void... v) {
+                HashMap<String,String> params = new HashMap<>();
+                params.put(Config.KEY_MSG_SEND_ID,MineUsrId);
+                params.put(Config.KEY_RECV_MSG_ID,HisUsrId);
+                params.put(Config.KEY_MSG,chatmsg);
+
+                RequestHandler rh = new RequestHandler();
+                String res = rh.sendPostRequest(Config.URL_SEND_MSG, params);
+                return res;
+            }
+        }
+
+        AddMessage ae = new AddMessage();
+        ae.execute();
+    }
+
 
 }
 

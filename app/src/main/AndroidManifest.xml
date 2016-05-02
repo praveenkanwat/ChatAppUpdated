@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.alpha.chatapp">
-
+    <uses-permission android:name="android.permission.INTERNET" />
     <application
         android:allowBackup="true"
         android:icon="@drawable/appicon"
@@ -14,7 +14,13 @@
         <activity android:name=".CodeVerify">
 
         </activity>
+        <activity android:name=".ListOfChat">
+
+        </activity>
         <activity android:name=".Authentiacate1">
+
+        </activity>
+        <activity android:name=".FirstScreen">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
